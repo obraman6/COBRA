@@ -60,9 +60,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     )
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
+    private val _hapticsEnabled = MutableStateFlow(prefs.getBoolean("hapticsEnabled", true))
+    val hapticsEnabled: StateFlow<Boolean> = _hapticsEnabled.asStateFlow()
+
     fun setThemeMode(mode: ThemeMode) {
         _themeMode.value = mode
         prefs.edit().putString("themeMode", mode.name).apply()
+    }
+
+    fun setHapticsEnabled(enabled: Boolean) {
+        _hapticsEnabled.value = enabled
+        prefs.edit().putBoolean("hapticsEnabled", enabled).apply()
     }
 
     private val _userName = MutableStateFlow(prefs.getString("userName", "") ?: "")
@@ -386,12 +394,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private fun triggerHapticFeedback(isCapture: Boolean) {
+        if (!_hapticsEnabled.value) return
+        try {
+            val vibrator = getApplication<Application>().getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator
+            vibrator?.let {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    val duration = if (isCapture) 60L else 30L
+                    it.vibrate(android.os.VibrationEffect.createOneShot(duration, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+                } else {
+                    val duration = if (isCapture) 60L else 30L
+                    @Suppress("DEPRECATION")
+                    it.vibrate(duration)
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MainViewModel", "Haptic feedback error", e)
+        }
+    }
+
     private fun applyMove(move: Move) {
-        if (move.captured.isNotEmpty()) {
+        val isCapture = move.captured.isNotEmpty()
+        if (isCapture) {
             soundManager.playCaptureSound(_soundTheme.value)
         } else {
             soundManager.playMoveSound(_soundTheme.value)
         }
+        triggerHapticFeedback(isCapture)
         val current = _boardState.value
         _history.value = _history.value + current
         _selectedPos.value = null

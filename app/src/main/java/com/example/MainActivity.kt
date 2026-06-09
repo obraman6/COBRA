@@ -36,6 +36,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -84,6 +85,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: MainViewModel = viewModel()
             val themeMode by viewModel.themeMode.collectAsState()
+            val language by viewModel.language.collectAsState()
             
             val isDarkTheme = when (themeMode) {
                 ThemeMode.LIGHT -> false
@@ -91,13 +93,21 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
             
+            val locale = if (language == MainViewModel.Language.ENGLISH) java.util.Locale("en") else java.util.Locale("sw")
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val configuration = android.content.res.Configuration(context.resources.configuration)
+            configuration.setLocale(locale)
+            val localizedContext = remember(locale) { context.createConfigurationContext(configuration) }
+
             MyApplicationTheme(darkTheme = isDarkTheme) {
                 // Ensure the app doesn't scale text based on system settings and uses standard density
                 androidx.compose.runtime.CompositionLocalProvider(
                     androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(
                         density = androidx.compose.ui.platform.LocalDensity.current.density,
                         fontScale = 1f
-                    )
+                    ),
+                    androidx.compose.ui.platform.LocalContext provides localizedContext,
+                    androidx.compose.ui.platform.LocalConfiguration provides configuration
                 ) {
                     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                         val appState by viewModel.appState.collectAsState()
@@ -146,7 +156,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun DashboardScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     val language by viewModel.language.collectAsState()
-    val isEnglish = language == MainViewModel.Language.ENGLISH
     
     val wins by viewModel.wins.collectAsState()
     val losses by viewModel.losses.collectAsState()
@@ -172,33 +181,33 @@ fun DashboardScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             IconButton(onClick = { viewModel.quitToMenu() }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
-            Text(if (isEnglish) "Player Dashboard" else "Dashibodi ya Mchezaji", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+            Text(stringResource(R.string.str_player_dashboard), fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
         }
         Spacer(modifier = Modifier.height(24.dp))
 
         // Average Duration Card
         Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
             Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(if (isEnglish) "Average Match Duration" else "Muda wa Wastani wa Mechi", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(stringResource(R.string.str_average_match_duration), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.DateRange, contentDescription = null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = if (isEnglish) "${averageDurationMins}m ${averageDurationRemainderSecs}s" else "Dk ${averageDurationMins} Sek ${averageDurationRemainderSecs}",
+                        text = stringResource(R.string.str_averagedurationmins_m___aver, averageDurationMins, averageDurationRemainderSecs),
                         fontSize = 32.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
-                Text(if (isEnglish) "Matches Played: $totalGames" else "Mechi Ulizocheza: $totalGames", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+                Text(stringResource(R.string.str_matches_played___totalgames, totalGames), fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
             }
         }
 
         // Win / Loss Ratio Chart
         Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
             Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(if (isEnglish) "Win / Loss Ratio (vs AI)" else "Uwiano wa Ushindi (vs AI)", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text(stringResource(R.string.str_win___loss_ratio__vs_ai), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 if (totalMatches > 0) {
@@ -244,16 +253,16 @@ fun DashboardScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(16.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isEnglish) "Wins: $wins" else "Ushindi: $wins", fontWeight = FontWeight.Medium)
+                            Text(stringResource(R.string.str_wins___wins, wins), fontWeight = FontWeight.Medium)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.size(16.dp).background(MaterialTheme.colorScheme.error, CircleShape))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text(if (isEnglish) "Losses: $losses" else "Kushindwa: $losses", fontWeight = FontWeight.Medium)
+                            Text(stringResource(R.string.str_losses___losses, losses), fontWeight = FontWeight.Medium)
                         }
                     }
                 } else {
-                    Text(if (isEnglish) "No matches played against AI." else "Hujacheza mechi yoyote dhidi ya AI.", fontSize = 16.sp, modifier = Modifier.padding(24.dp))
+                    Text(stringResource(R.string.str_no_matches_played_against_ai), fontSize = 16.sp, modifier = Modifier.padding(24.dp))
                 }
             }
         }
@@ -263,7 +272,6 @@ fun DashboardScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 @Composable
 fun NameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     val language by viewModel.language.collectAsState()
-    val isEnglish = language == MainViewModel.Language.ENGLISH
 
     var nameInput by remember { mutableStateOf("COBRA") }
     var showError by remember { mutableStateOf(false) }
@@ -306,7 +314,7 @@ fun NameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = if(isEnglish) "Please enter your name to start" else "Tafadhali ingiza jina lako ili kuanza",
+                    text = stringResource(R.string.str_please_enter_your_name_to_star),
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     modifier = Modifier.padding(bottom = 24.dp, top = 8.dp),
@@ -319,7 +327,7 @@ fun NameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                         nameInput = it
                         showError = false 
                     },
-                    label = { Text(if(isEnglish) "Your Name" else "Jina lako") },
+                    label = { Text(stringResource(R.string.str_your_name)) },
                     isError = showError,
                     singleLine = true,
                     shape = RoundedCornerShape(12.dp),
@@ -328,7 +336,7 @@ fun NameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 
                 AnimatedVisibility(visible = showError) {
                     Text(
-                        if(isEnglish) "Please enter a valid name." else "Tafadhali ingiza jina halali.",
+                        stringResource(R.string.str_please_enter_a_valid_name),
                         color = MaterialTheme.colorScheme.error,
                         fontSize = 12.sp,
                         modifier = Modifier
@@ -353,7 +361,7 @@ fun NameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Text(if(isEnglish) "CONTINUE" else "ENDELEA", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+                    Text(stringResource(R.string.str_continue), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                 }
             }
         }
@@ -371,7 +379,6 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     val userName by viewModel.userName.collectAsState()
     val myColor by viewModel.myColor.collectAsState()
     val language by viewModel.language.collectAsState()
-    val isEnglish = language == MainViewModel.Language.ENGLISH
 
     var showJoinDialog by remember { mutableStateOf(false) }
     var joinIpStr by remember { mutableStateOf("") }
@@ -384,25 +391,25 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     if (showRulesDialog) {
         AlertDialog(
             onDismissRequest = { showRulesDialog = false },
-            title = { Text(if(isEnglish) "Game Rules" else "Sheria za Mchezo", fontWeight = FontWeight.Bold) },
+            title = { Text(stringResource(R.string.str_game_rules), fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text(if(isEnglish) "1. Mandatory Jump: You must capture if a jump is available." else "1. Kula Lazima: Ukiona nafasi ya kula (kuruka kete ya mpinzani), lazima ule.")
+                    Text(stringResource(R.string.str_1__mandatory_jump__you_must_ca))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(if(isEnglish) "2. Multiple Jumps: If another jump is available after a capture, you must continue jumping." else "2. Kula Mfululizo: Ukila kete na bado kuna nafasi ya kula nyingine mbele na kete hiyo hiyo, lazima uendelee kula (Multiple Captures).")
+                    Text(stringResource(R.string.str_2__multiple_jumps__if_another))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(if(isEnglish) "3. King: A piece reaching the opponent's end becomes a King, moving both forwards and backwards." else "3. Dama (King): Kete ikifika mwisho wa ubao (kwa mpinzani) inakuwa Dama. Dama linaweza kwenda mbele na nyuma.")
+                    Text(stringResource(R.string.str_3__king__a_piece_reaching_the))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(if(isEnglish) " - Flying King (Tanzanian): Kings can move across multiple empty squares." else " - Taji Linaruka (Tanzanian): Dama linaweza kuruka miraba mingi mara moja.")
+                    Text(stringResource(R.string.str_flying_king__tanzanian___ki))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(if(isEnglish) " - Standard: Kings move exactly one square." else " - Standard: Dama linasonga hatua moja tu.")
+                    Text(stringResource(R.string.str_standard__kings_move_exactl))
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(if(isEnglish) "4. Win: You win by capturing all opponent pieces or blocking them from moving." else "4. Kushinda: Unashinda kwa kula kete zote za mpinzani au kumziba mpinzani ashindwe kusonga.")
+                    Text(stringResource(R.string.str_4__win__you_win_by_capturing_a))
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showRulesDialog = false }) {
-                    Text(if(isEnglish) "I Understand" else "Sawa Nimeelewa")
+                    Text(stringResource(R.string.str_i_understand))
                 }
             }
         )
@@ -411,10 +418,10 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     if (showJoinDialog) {
         AlertDialog(
             onDismissRequest = { showJoinDialog = false },
-            title = { Text(if(isEnglish) "Join a Friend" else "Unganisha na Mwenzako (Join)") },
+            title = { Text(stringResource(R.string.str_join_a_friend)) },
             text = {
                 Column {
-                    Text(if(isEnglish) "Enter friend's IP:" else "Ingiza namba ya IP ya mwenzako:")
+                    Text(stringResource(R.string.str_enter_friend_s_ip))
                     OutlinedTextField(
                         value = joinIpStr,
                         onValueChange = { joinIpStr = it },
@@ -429,12 +436,12 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                     viewModel.startGame()
                     showJoinDialog = false
                 }) {
-                    Text(if(isEnglish) "Connect & Play" else "Unganisha na Cheza")
+                    Text(stringResource(R.string.str_connect___play))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showJoinDialog = false }) {
-                    Text(if(isEnglish) "Cancel" else "Ghairi")
+                    Text(stringResource(R.string.str_cancel))
                 }
             }
         )
@@ -544,13 +551,13 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 IconButton(onClick = { showSettings = false }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-                Text(if(isEnglish) "Settings" else "Mipangilio (Settings)", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+                Text(stringResource(R.string.str_settings), fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
             }
             Spacer(modifier = Modifier.height(16.dp))
             
             Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(if(isEnglish) "Your Name:" else "Jina Lako:", fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(stringResource(R.string.str_your_name_2), fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
                     OutlinedTextField(
                         value = editedName,
                         onValueChange = { editedName = it },
@@ -561,7 +568,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                         onClick = { if (editedName.isNotBlank()) viewModel.setUserName(editedName) },
                         modifier = Modifier.align(Alignment.End).padding(top = 8.dp)
                     ) {
-                        Text(if(isEnglish) "Save" else "Hifadhi")
+                        Text(stringResource(R.string.str_save))
                     }
                 }
             }
@@ -573,9 +580,9 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(if(isEnglish) "Rules:" else "Sheria:", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text(stringResource(R.string.str_rules), fontWeight = FontWeight.Bold, fontSize = 16.sp)
                         TextButton(onClick = { showRulesDialog = true }) {
-                            Text(if(isEnglish) "Read All Rules" else "Soma Sheria Zote")
+                            Text(stringResource(R.string.str_read_all_rules))
                         }
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -583,21 +590,21 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                             selected = rules == BoardState.Rules.TANZANIAN,
                             onClick = { viewModel.setRules(BoardState.Rules.TANZANIAN) }
                         )
-                        Text(if(isEnglish) "Tanzanian (Flying King)" else "Tanzanian (Taji Linaruka)")
+                        Text(stringResource(R.string.str_tanzanian__flying_king))
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
                             selected = rules == BoardState.Rules.STANDARD,
                             onClick = { viewModel.setRules(BoardState.Rules.STANDARD) }
                         )
-                        Text(if(isEnglish) "Standard" else "Kawaida (Standard)")
+                        Text(stringResource(R.string.str_standard))
                     }
                 }
             }
 
             Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(if(isEnglish) "Choose Your Colored Pieces:" else "Chagua Rangi Ya Kete Zako:", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(stringResource(R.string.str_choose_your_colored_pieces), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -645,27 +652,48 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 
             Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text(if(isEnglish) "Theme:" else "Muonekano (Theme):", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(stringResource(R.string.str_theme), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
                             selected = themeMode == ThemeMode.SYSTEM,
                             onClick = { viewModel.setThemeMode(ThemeMode.SYSTEM) }
                         )
-                        Text(if(isEnglish) "System" else "Mfumo (System)", fontWeight = FontWeight.Medium)
+                        Text(stringResource(R.string.str_system), fontWeight = FontWeight.Medium)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
                             selected = themeMode == ThemeMode.LIGHT,
                             onClick = { viewModel.setThemeMode(ThemeMode.LIGHT) }
                         )
-                        Text(if(isEnglish) "Light" else "Mwanga (Light)", fontWeight = FontWeight.Medium)
+                        Text(stringResource(R.string.str_light), fontWeight = FontWeight.Medium)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
                             selected = themeMode == ThemeMode.DARK,
                             onClick = { viewModel.setThemeMode(ThemeMode.DARK) }
                         )
-                        Text(if(isEnglish) "Dark" else "Giza (Dark)", fontWeight = FontWeight.Medium)
+                        Text(stringResource(R.string.str_dark), fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+
+            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    val hapticsEnabled by viewModel.hapticsEnabled.collectAsState()
+                    Text(stringResource(R.string.str_haptic_feedback), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { viewModel.setHapticsEnabled(true) }) {
+                        RadioButton(
+                            selected = hapticsEnabled,
+                            onClick = { viewModel.setHapticsEnabled(true) }
+                        )
+                        Text(stringResource(R.string.str_enabled), fontWeight = FontWeight.Medium)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { viewModel.setHapticsEnabled(false) }) {
+                        RadioButton(
+                            selected = !hapticsEnabled,
+                            onClick = { viewModel.setHapticsEnabled(false) }
+                        )
+                        Text(stringResource(R.string.str_disabled), fontWeight = FontWeight.Medium)
                     }
                 }
             }
@@ -673,7 +701,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     val soundTheme by viewModel.soundTheme.collectAsState()
-                    Text(if(isEnglish) "Sound Theme:" else "Sauti Mchezo (Sound Theme):", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(stringResource(R.string.str_sound_theme), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                     SoundTheme.values().forEach { st ->
                         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.clickable { viewModel.setSoundTheme(st) }) {
                             RadioButton(
@@ -748,12 +776,12 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(if(isEnglish) "Your Coins" else "Sarafu Zako (Coins)", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
+                        Text(stringResource(R.string.str_your_coins), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onTertiaryContainer)
                         Text("${wallet?.totalCoins ?: 0}", fontSize = 28.sp, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.tertiary)
                     }
                     Column(horizontalAlignment = Alignment.End) {
-                        Text(if(isEnglish) "Won: ${wallet?.winCoins ?: 0}" else "Ushindi: ${wallet?.winCoins ?: 0}", color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha=0.7f))
-                        Text(if(isEnglish) "Lost: ${wallet?.lostCoins ?: 0}" else "Hasara: ${wallet?.lostCoins ?: 0}", color = MaterialTheme.colorScheme.error)
+                        Text(stringResource(R.string.str_won____wallet__wincoins____0, wallet?.winCoins ?: 0), color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha=0.7f))
+                        Text(stringResource(R.string.str_lost____wallet__lostcoins____0, wallet?.lostCoins ?: 0), color = MaterialTheme.colorScheme.error)
                     }
                 }
             }
@@ -767,17 +795,17 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(if(isEnglish) "Wins" else "Ushindi", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                    Text(stringResource(R.string.str_wins), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                     Text("$wins", fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(if(isEnglish) "Losses" else "Kushindwa", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.str_losses), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                     Text("$losses", fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
 
-        Text(if(isEnglish) "Choose Game Mode" else "Chagua Mchezo (Game Mode)", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, modifier = Modifier.padding(bottom = 16.dp, top = 8.dp))
+        Text(stringResource(R.string.str_choose_game_mode), fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, modifier = Modifier.padding(bottom = 16.dp, top = 8.dp))
 
         ElevatedCard(
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
@@ -791,11 +819,11 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(if(isEnglish) "Play vs Computer" else "Cheza na Kompyuta", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(stringResource(R.string.str_play_vs_computer), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
                 AnimatedVisibility(visible = gameMode == GameMode.VS_AI) {
                     Column(modifier = Modifier.padding(top = 16.dp)) {
-                        Text(if(isEnglish) "Select Difficulty:" else "Chagua Ugumu (Level):", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.str_select_difficulty), fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             AiLevel.values().forEach { level ->
@@ -833,12 +861,12 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(if(isEnglish) "Local Network (WiFi/Hotspot)" else "Mtandao (WiFi/Hotspot)", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(stringResource(R.string.str_local_network__wifi_hotspot), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
                 AnimatedVisibility(visible = gameMode == GameMode.WIFI) {
                     var betAmountStr by remember { mutableStateOf("0") }
                     Column(modifier = Modifier.padding(top = 16.dp)) {
-                        Text(if(isEnglish) "Bet Amount (Coins):" else "Kiwango cha Kubet (Coins):", fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(stringResource(R.string.str_bet_amount__coins), fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         OutlinedTextField(
                             value = betAmountStr,
                             onValueChange = { betAmountStr = it },
@@ -853,7 +881,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                                 viewModel.setHostWiFi()
                                 viewModel.startGame()
                             }, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f)) {
-                                Text(if(isEnglish) "Host Game" else "Kuwa Mwenyeji")
+                                Text(stringResource(R.string.str_host_game))
                             }
                             Button(onClick = { 
                                 val bet = betAmountStr.toIntOrNull() ?: 0
@@ -861,7 +889,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                                 showJoinDialog = true 
                             }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                             shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f)) {
-                                Text(if(isEnglish) "Join Game" else "Unganisha Namba", color = MaterialTheme.colorScheme.onSecondary)
+                                Text(stringResource(R.string.str_join_game), color = MaterialTheme.colorScheme.onSecondary)
                             }
                         }
                     }
@@ -881,7 +909,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Filled.AccountCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text(if(isEnglish) "Online Multiplayer" else "Online (Firebase)", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                    Text(stringResource(R.string.str_online_multiplayer), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 }
                 AnimatedVisibility(visible = gameMode == GameMode.ONLINE) {
                     var joinCode by remember { mutableStateOf("") }
@@ -892,17 +920,17 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                     Column(modifier = Modifier.padding(top = 16.dp)) {
                         Text("Status: $onlineStatus", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 8.dp))
                         if (roomState != null) {
-                            Text(if(isEnglish) "Room ID: ${roomState?.roomId}" else "Chumba Namba: ${roomState?.roomId}", fontSize = 20.sp, fontWeight = FontWeight.Black)
+                            Text(stringResource(R.string.str_room_id____roomstate__roomid, roomState?.roomId ?: ""), fontSize = 20.sp, fontWeight = FontWeight.Black)
                             if (roomState?.status == "WAITING") {
                                 CircularProgressIndicator(modifier = Modifier.padding(top = 8.dp).size(24.dp))
-                                Text(if(isEnglish) "Waiting for opponent..." else "Nasubiri mpinzani aingie...", modifier = Modifier.padding(top = 8.dp))
+                                Text(stringResource(R.string.str_waiting_for_opponent), modifier = Modifier.padding(top = 8.dp))
                             } else if (roomState?.status == "PLAYING") {
                                 Button(
                                     onClick = { viewModel.startGame() },
                                     modifier = Modifier.padding(top = 8.dp).fillMaxWidth(),
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
-                                    Text(if(isEnglish) "Return to Game" else "Rudi Kwenye Mchezo")
+                                    Text(stringResource(R.string.str_return_to_game))
                                 }
                             }
                         } else {
@@ -913,14 +941,14 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                                         viewModel.startGame()
                                     }
                                 }) {
-                                    Text(if(isEnglish) "Create Room" else "Tengeneza Chumba")
+                                    Text(stringResource(R.string.str_create_room))
                                 }
                             }
                             
                             OutlinedTextField(
                                 value = joinCode,
                                 onValueChange = { joinCode = it },
-                                label = { Text(if(isEnglish) "Room Code" else "Weka Namba Ya Chumba") },
+                                label = { Text(stringResource(R.string.str_room_code)) },
                                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                             )
                             Button(onClick = { 
@@ -931,7 +959,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                                     }
                                 }
                             }, modifier = Modifier.padding(top = 8.dp)) {
-                                Text(if(isEnglish) "Join Online Match" else "Unganisha mtandaoni")
+                                Text(stringResource(R.string.str_join_online_match))
                             }
                         }
                     }
@@ -948,7 +976,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             ) {
                 Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(28.dp))
                 Spacer(modifier = Modifier.width(12.dp))
-                Text(if(isEnglish) "START GAME" else "ANZA MCHEZO", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
+                Text(stringResource(R.string.str_start_game), fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
             }
         }
     }
@@ -968,7 +996,6 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
     val userName by viewModel.userName.collectAsState()
     val myColor by viewModel.myColor.collectAsState()
     val language by viewModel.language.collectAsState()
-    val isEnglish = language == MainViewModel.Language.ENGLISH
     val activeEmote by viewModel.activeEmote.collectAsState()
     val haptics = LocalHapticFeedback.current
     
@@ -1004,14 +1031,14 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
         val mshindiName = getPlayerName(w)
         AlertDialog(
             onDismissRequest = { viewModel.clearWinner() },
-            title = { Text(if(isEnglish) "Match Over!" else "Mchezo Umekwisha!") },
-            text = { Text(if(isEnglish) "Winner is: $mshindiName \uD83C\uDF89" else "Mshindi ni: $mshindiName \uD83C\uDF89") },
+            title = { Text(stringResource(R.string.str_match_over)) },
+            text = { Text(stringResource(R.string.str_winner_is___mshindiname__ud83c, mshindiName)) },
             confirmButton = {
                 TextButton(onClick = { 
                     viewModel.clearWinner()
                     viewModel.restartGame() 
                 }) {
-                    Text(if(isEnglish) "Play Again" else "Cheza Tena")
+                    Text(stringResource(R.string.str_play_again))
                 }
             },
             dismissButton = {
@@ -1019,7 +1046,7 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                     viewModel.clearWinner()
                     viewModel.quitToMenu() 
                 }) {
-                    Text(if(isEnglish) "Quit Match" else "Rudi Mwanzo")
+                    Text(stringResource(R.string.str_quit_match))
                 }
             }
         )
@@ -1363,7 +1390,7 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(if(isEnglish) "Undo Move" else "Rudi Nyuma (Undo)")
+                    Text(stringResource(R.string.str_undo_move))
                 }
             }
 
@@ -1372,13 +1399,13 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text(if(isEnglish) "Restart Match" else "Anza Upya")
+                Text(stringResource(R.string.str_restart_match))
             }
             Button(
                 onClick = { viewModel.quitToMenu() },
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text(if(isEnglish) "Quit Match" else "Rudi Mwanzo")
+                Text(stringResource(R.string.str_quit_match))
             }
         }
     }
