@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Outer glow or drop shadow (simplified by offset) -->
+    <path
+        android:fillColor="#40000000"
+        android:pathData="M27.5,75 l-9.5,-30 l17.5,15 l18.5,-22.5 l18.5,22.5 l17.5,-15 l-9.5,30 z" />
+        
+    <!-- Main Gold Crown -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M25,72 l-9.5,-30 l17.5,15 l18.5,-22.5 l18.5,22.5 l17.5,-15 l-9.5,30 z" />
+        
+    <!-- Crown Base -->
+    <path
+        android:fillColor="#FFC107"
+        android:pathData="M25,75 l53,0 l0,7 l-53,0 z M28,85 l47,0 l0,4 l-47,0 z" />
+</vector>

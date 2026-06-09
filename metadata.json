@@ -1,0 +1,6 @@
+{
+  "name": "Chess Pro TZ",
+  "description": "A modern offline checkers game featuring Tanzanian local rules, flying kings, and Minimax AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
