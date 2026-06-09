@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -117,6 +119,14 @@ class MainActivity : ComponentActivity() {
                                     .background(MaterialTheme.colorScheme.background),
                                 viewModel = viewModel
                             )
+                        } else if (appState == AppState.DASHBOARD) {
+                            DashboardScreen(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(innerPadding)
+                                    .background(MaterialTheme.colorScheme.background),
+                                viewModel = viewModel
+                            )
                         } else {
                             GameScreen(
                                 modifier = Modifier
@@ -134,7 +144,127 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
+fun DashboardScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
+    val language by viewModel.language.collectAsState()
+    val isEnglish = language == MainViewModel.Language.ENGLISH
+    
+    val wins by viewModel.wins.collectAsState()
+    val losses by viewModel.losses.collectAsState()
+    val totalGames by viewModel.totalGames.collectAsState()
+    val totalDurationMs by viewModel.totalDurationMs.collectAsState()
+    
+    val averageDurationMs = if (totalGames > 0) totalDurationMs / totalGames else 0L
+    val averageDurationSeconds = averageDurationMs / 1000
+    val averageDurationMins = averageDurationSeconds / 60
+    val averageDurationRemainderSecs = averageDurationSeconds % 60
+    
+    val totalMatches = wins + losses
+    val winRatio = if (totalMatches > 0) wins.toFloat() / totalMatches.toFloat() else 0f
+
+    Column(
+        modifier = modifier
+            .padding(16.dp)
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { viewModel.quitToMenu() }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+            }
+            Text(if (isEnglish) "Player Dashboard" else "Dashibodi ya Mchezaji", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+        }
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Average Duration Card
+        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(if (isEnglish) "Average Match Duration" else "Muda wa Wastani wa Mechi", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.DateRange, contentDescription = null, modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isEnglish) "${averageDurationMins}m ${averageDurationRemainderSecs}s" else "Dk ${averageDurationMins} Sek ${averageDurationRemainderSecs}",
+                        fontSize = 32.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Text(if (isEnglish) "Matches Played: $totalGames" else "Mechi Ulizocheza: $totalGames", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
+            }
+        }
+
+        // Win / Loss Ratio Chart
+        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(if (isEnglish) "Win / Loss Ratio (vs AI)" else "Uwiano wa Ushindi (vs AI)", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                if (totalMatches > 0) {
+                    val primaryColor = MaterialTheme.colorScheme.primary
+                    val errorColor = MaterialTheme.colorScheme.error
+                    
+                    Box(modifier = Modifier.size(200.dp), contentAlignment = Alignment.Center) {
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            val winAngle = 360f * winRatio
+                            val lossAngle = 360f - winAngle
+                            
+                            drawArc(
+                                color = primaryColor,
+                                startAngle = -90f,
+                                sweepAngle = winAngle,
+                                useCenter = true
+                            )
+                            drawArc(
+                                color = errorColor,
+                                startAngle = -90f + winAngle,
+                                sweepAngle = lossAngle,
+                                useCenter = true
+                            )
+                        }
+                        
+                        // Inner circle for donut chart look
+                        Box(
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.surface),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("${(winRatio * 100).toInt()}%", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(16.dp).background(MaterialTheme.colorScheme.primary, CircleShape))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isEnglish) "Wins: $wins" else "Ushindi: $wins", fontWeight = FontWeight.Medium)
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(modifier = Modifier.size(16.dp).background(MaterialTheme.colorScheme.error, CircleShape))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(if (isEnglish) "Losses: $losses" else "Kushindwa: $losses", fontWeight = FontWeight.Medium)
+                        }
+                    }
+                } else {
+                    Text(if (isEnglish) "No matches played against AI." else "Hujacheza mechi yoyote dhidi ya AI.", fontSize = 16.sp, modifier = Modifier.padding(24.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun NameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
+    val language by viewModel.language.collectAsState()
+    val isEnglish = language == MainViewModel.Language.ENGLISH
+
     var nameInput by remember { mutableStateOf("COBRA") }
     var showError by remember { mutableStateOf(false) }
 
@@ -492,6 +622,27 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             
             Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    val language by viewModel.language.collectAsState()
+                    Text(if (language == MainViewModel.Language.ENGLISH) "Language:" else "Lugha:", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = language == MainViewModel.Language.ENGLISH,
+                            onClick = { viewModel.setLanguage(MainViewModel.Language.ENGLISH) }
+                        )
+                        Text("English", fontWeight = FontWeight.Medium)
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = language == MainViewModel.Language.SWAHILI,
+                            onClick = { viewModel.setLanguage(MainViewModel.Language.SWAHILI) }
+                        )
+                        Text("Swahili", fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+
+            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text("Muonekano (Theme):", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
@@ -563,6 +714,9 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                     )
                 }
                 Row {
+                    IconButton(onClick = { viewModel.goToDashboard() }) {
+                        Icon(Icons.Filled.List, contentDescription = "Dashboard", tint = MaterialTheme.colorScheme.primary)
+                    }
                     IconButton(onClick = { showLeaderboard = true }) {
                         Icon(Icons.Filled.Star, contentDescription = "Leaderboard", tint = MaterialTheme.colorScheme.primary)
                     }

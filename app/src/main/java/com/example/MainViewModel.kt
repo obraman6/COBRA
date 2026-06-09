@@ -19,7 +19,7 @@ import kotlinx.coroutines.withContext
 
 enum class GameMode { VS_AI, PASS_AND_PLAY, WIFI, ONLINE }
 
-enum class AppState { MENU, PLAYING }
+enum class AppState { MENU, PLAYING, DASHBOARD }
 enum class AiLevel(val display: String, val depth: Int) {
     EASY("Rahisi (Easy)", 1),
     HARD("Ngumu (Hard)", 3),
@@ -86,11 +86,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val soundManager = SoundManager()
 
+    enum class Language { ENGLISH, SWAHILI }
+
+    private val _language = MutableStateFlow(
+        run {
+            val saved = prefs.getString("language", Language.ENGLISH.name)
+            Language.values().find { it.name == saved } ?: Language.ENGLISH
+        }
+    )
+    val language: StateFlow<Language> = _language.asStateFlow()
+
     private val _wins = MutableStateFlow(prefs.getInt("wins", 0))
     val wins: StateFlow<Int> = _wins.asStateFlow()
 
     private val _losses = MutableStateFlow(prefs.getInt("losses", 0))
     val losses: StateFlow<Int> = _losses.asStateFlow()
+
+    private val _totalGames = MutableStateFlow(prefs.getInt("totalGames", 0))
+    val totalGames: StateFlow<Int> = _totalGames.asStateFlow()
+
+    private val _totalDurationMs = MutableStateFlow(prefs.getLong("totalDurationMs", 0L))
+    val totalDurationMs: StateFlow<Long> = _totalDurationMs.asStateFlow()
+
+    fun setLanguage(lang: Language) {
+        _language.value = lang
+        prefs.edit().putString("language", lang.name).apply()
+    }
+
+    private var startMatchTimeMillis = 0L
 
     private val _appState = MutableStateFlow(AppState.MENU)
     val appState: StateFlow<AppState> = _appState.asStateFlow()
@@ -272,6 +295,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         NetworkManager.disconnect()
     }
 
+    fun goToDashboard() {
+        _appState.value = AppState.DASHBOARD
+    }
+
     fun clearAlert() {
         _alertMessage.value = null
     }
@@ -407,6 +434,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         if (w != null) {
             _winner.value = w
+            
+            // Update Duration and Total Games
+            if (startMatchTimeMillis > 0) {
+                val matchDuration = System.currentTimeMillis() - startMatchTimeMillis
+                _totalDurationMs.value += matchDuration
+                prefs.edit().putLong("totalDurationMs", _totalDurationMs.value).apply()
+                startMatchTimeMillis = 0L // reset so we don't accidentally add it again
+            }
+            
+            _totalGames.value += 1
+            prefs.edit().putInt("totalGames", _totalGames.value).apply()
+
             if (_gameMode.value == GameMode.VS_AI) {
                 if (w == Player.WHITE) {
                     _wins.value += 1
@@ -529,6 +568,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun restartGame() {
+        startMatchTimeMillis = System.currentTimeMillis()
         _boardState.value = GameEngine.createInitialBoard(_rules.value)
         _selectedPos.value = null
         _validMoves.value = emptyList()
