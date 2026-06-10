@@ -516,6 +516,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (_winner.value != null) return
         _winner.value = w
         
+        // Play Win/Loss sound
+        val isMimiMshindi = (w == getMyPlayerSide())
+        if (isMimiMshindi) {
+            soundManager.playWinSound(_soundTheme.value)
+        } else {
+            soundManager.playLossSound(_soundTheme.value)
+        }
+        
         // Update Duration and Total Games
         if (startMatchTimeMillis > 0) {
             val matchDuration = System.currentTimeMillis() - startMatchTimeMillis

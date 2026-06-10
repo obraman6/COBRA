@@ -1047,35 +1047,11 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
         )
     }
 
-    winner?.let { w ->
-        val mshindiName = getPlayerName(w)
-        AlertDialog(
-            onDismissRequest = { viewModel.clearWinner() },
-            title = { Text(stringResource(R.string.str_match_over)) },
-            text = { Text(stringResource(R.string.str_winner_is___mshindiname__ud83c, mshindiName)) },
-            confirmButton = {
-                TextButton(onClick = { 
-                    viewModel.clearWinner()
-                    viewModel.restartGame() 
-                }) {
-                    Text(stringResource(R.string.str_play_again))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { 
-                    viewModel.clearWinner()
-                    viewModel.quitToMenu() 
-                }) {
-                    Text(stringResource(R.string.str_quit_match))
-                }
-            }
-        )
-    }
-
-    Column(
-        modifier = modifier.padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    Box(modifier = modifier) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
         // Header
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1426,6 +1402,50 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text(stringResource(R.string.str_quit_match))
+            }
+        }
+        }
+        
+        winner?.let { w ->
+            val isMyWin = w == myPlayerSide
+            val resultText = if (isMyWin) "YOU WIN" else "YOU LOSS"
+            
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.7f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = resultText,
+                        fontSize = 48.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = KingGold
+                    )
+                    Spacer(modifier = Modifier.height(32.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Button(
+                            onClick = { 
+                                viewModel.clearWinner()
+                                viewModel.restartGame() 
+                            },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(stringResource(R.string.str_play_again))
+                        }
+                        Button(
+                            onClick = { 
+                                viewModel.clearWinner()
+                                viewModel.quitToMenu() 
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(stringResource(R.string.str_quit_match))
+                        }
+                    }
+                }
             }
         }
     }

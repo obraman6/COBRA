@@ -60,6 +60,62 @@ class SoundManager {
         }
     }
 
+    fun playWinSound(theme: SoundTheme) {
+        if (theme == SoundTheme.SILENT) return
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                when (theme) {
+                    SoundTheme.WOODEN -> {
+                        playTone(440.0, 150, 0.5)
+                        Thread.sleep(50)
+                        playTone(554.0, 150, 0.5)
+                        Thread.sleep(50)
+                        playTone(659.0, 300, 0.5)
+                    }
+                    SoundTheme.ARCADE -> {
+                        playSweep(400.0, 800.0, 100, 0.4)
+                        Thread.sleep(50)
+                        playSweep(600.0, 1200.0, 200, 0.4)
+                    }
+                    SoundTheme.DIGITAL -> {
+                        playTone(1000.0, 100, 0.3)
+                        Thread.sleep(50)
+                        playTone(1500.0, 100, 0.3)
+                        Thread.sleep(50)
+                        playTone(2000.0, 200, 0.3)
+                    }
+                    else -> {}
+                }
+            } catch (e: Exception) {
+                Log.e("SoundManager", "Error playing sound", e)
+            }
+        }
+    }
+
+    fun playLossSound(theme: SoundTheme) {
+        if (theme == SoundTheme.SILENT) return
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                when (theme) {
+                    SoundTheme.WOODEN -> {
+                        playTone(300.0, 200, 0.5)
+                        Thread.sleep(50)
+                        playTone(250.0, 300, 0.5)
+                    }
+                    SoundTheme.ARCADE -> {
+                        playSweep(400.0, 200.0, 300, 0.4)
+                    }
+                    SoundTheme.DIGITAL -> {
+                        playSweep(800.0, 400.0, 300, 0.3)
+                    }
+                    else -> {}
+                }
+            } catch (e: Exception) {
+                Log.e("SoundManager", "Error playing sound", e)
+            }
+        }
+    }
+
     private fun playTone(freqOfTone: Double, durationMs: Int, volume: Double) {
         val numSamples = (durationMs * sampleRate) / 1000
         if(numSamples <= 0) return
