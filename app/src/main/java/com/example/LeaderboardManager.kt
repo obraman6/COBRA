@@ -15,6 +15,18 @@ data class LeaderboardEntry(
     val score: Int = 0 
 )
 
+enum class RankTiers(val displayName: String, val minWins: Int) {
+    BRONZE("Bronze", 0),
+    SILVER("Silver", 10),
+    GOLD("Gold", 25),
+    DIAMOND("Diamond", 50),
+    GRANDMASTER("Grandmaster", 100)
+}
+
+fun getRankForWins(wins: Int): RankTiers {
+    return RankTiers.values().reversed().find { wins >= it.minWins } ?: RankTiers.BRONZE
+}
+
 class LeaderboardManager {
     private val db = FirebaseFirestore.getInstance()
     private val collection = db.collection("leaderboard")
@@ -22,13 +34,32 @@ class LeaderboardManager {
     private val _globalLeaderboard = MutableStateFlow<List<LeaderboardEntry>>(emptyList())
     val globalLeaderboard: StateFlow<List<LeaderboardEntry>> = _globalLeaderboard.asStateFlow()
     
+    private val _myEntry = MutableStateFlow<LeaderboardEntry?>(null)
+    val myEntry: StateFlow<LeaderboardEntry?> = _myEntry.asStateFlow()
+    
     // For local leaderboard, let's track the top players that have similar scores or just the player's history, but often local leaderboard can just be caching or filtering.
     // We'll provide a way to load the global leaderboard:
+    suspend fun loadMyEntry() {
+        try {
+            val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+            val playerId = user?.uid ?: return
+            
+            val docRef = collection.document(playerId)
+            val snapshot = docRef.get().await()
+            val entry = snapshot.toObject(LeaderboardEntry::class.java)
+            if (entry != null) {
+                _myEntry.value = entry
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
     suspend fun loadGlobalLeaderboard() {
         try {
             val snapshot = collection
-                .orderBy("score", Query.Direction.DESCENDING)
-                .limit(50)
+                .orderBy("wins", Query.Direction.DESCENDING)
+                .limit(10)
                 .get()
                 .await()
             val entries = snapshot.toObjects(LeaderboardEntry::class.java)
@@ -63,6 +94,7 @@ class LeaderboardManager {
                 score = newScore
             )
             docRef.set(updatedEntry).await()
+            _myEntry.value = updatedEntry
             
             loadGlobalLeaderboard()
         } catch (e: Exception) {

@@ -18,7 +18,8 @@ data class RoomState(
     val status: String = "WAITING", // WAITING, PLAYING, FINISHED
     val lastMove: String = "",
     val turn: Player = Player.WHITE,
-    val lastEmote: String = ""
+    val lastEmote: String = "",
+    val lastMessage: String = ""
 )
 
 class OnlineMatchManager {
@@ -65,6 +66,14 @@ class OnlineMatchManager {
         return false
     }
 
+    suspend fun cancelRoom(roomId: String) {
+        currentRoomListener?.let { db.child("rooms").child(roomId).removeEventListener(it) }
+        currentRoomListener = null
+        _roomState.value = null
+        _connectionStatus.value = "Tenganisha (Disconnected)"
+        deleteRoom(roomId)
+    }
+
     suspend fun deleteRoom(roomId: String) {
         try {
             db.child("rooms").child(roomId).onDisconnect().cancel()
@@ -107,6 +116,11 @@ class OnlineMatchManager {
     suspend fun sendEmote(roomId: String, emoji: String) {
         val emoteStr = "$myPlayerId|$emoji|${System.currentTimeMillis()}"
         db.child("rooms").child(roomId).child("lastEmote").setValue(emoteStr).await()
+    }
+
+    suspend fun sendMessage(roomId: String, text: String, senderName: String) {
+        val msgStr = "$senderName|$text|${System.currentTimeMillis()}"
+        db.child("rooms").child(roomId).child("lastMessage").setValue(msgStr).await()
     }
 
     suspend fun setFinished(roomId: String) {

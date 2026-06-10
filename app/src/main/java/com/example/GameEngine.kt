@@ -12,7 +12,12 @@ data class Pos(val x: Int, val y: Int) {
     val isValid get() = x in 0..7 && y in 0..7
 }
 
-data class Piece(val player: Player, val isKing: Boolean = false)
+data class Piece(val player: Player, val isKing: Boolean = false, val id: Int = generateId()) {
+    companion object {
+        private var idCounter = 0
+        fun generateId() = idCounter++
+    }
+}
 
 data class Move(val from: Pos, val to: Pos, val captured: List<Pos> = emptyList())
 
@@ -21,7 +26,9 @@ data class BoardState(
     val currentPlayer: Player,
     val rules: Rules = Rules.TANZANIAN,
     val multiCapturePos: Pos? = null,
-    val deadPieces: Set<Pos> = emptySet()
+    val deadPieces: Set<Pos> = emptySet(),
+    val lastMove: Move? = null,
+    val moveCount: Int = 0
 ) {
     enum class Rules { STANDARD, TANZANIAN }
 }
@@ -71,7 +78,9 @@ class GameEngine {
                 pieces = newPieces, 
                 currentPlayer = nextTurn, 
                 multiCapturePos = nextMultiCapturePos,
-                deadPieces = if (nextMultiCapturePos != null) newDeadPieces else emptySet()
+                deadPieces = if (nextMultiCapturePos != null) newDeadPieces else emptySet(),
+                lastMove = move,
+                moveCount = state.moveCount + 1
             )
         }
 

@@ -34,10 +34,20 @@ interface MatchRewardDao {
     suspend fun insertReward(reward: MatchReward)
 }
 
-@Database(entities = [Wallet::class, MatchReward::class], version = 1, exportSchema = false)
+@Dao
+interface MatchHistoryDao {
+    @Query("SELECT * FROM match_history ORDER BY timestamp DESC LIMIT 20")
+    fun getRecentHistory(): Flow<List<MatchHistory>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMatchHistory(history: MatchHistory)
+}
+
+@Database(entities = [Wallet::class, MatchReward::class, MatchHistory::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun walletDao(): WalletDao
     abstract fun matchRewardDao(): MatchRewardDao
+    abstract fun matchHistoryDao(): MatchHistoryDao
 
     companion object {
         @Volatile
@@ -49,7 +59,8 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "draft_database"
-                ).build()
+                ).fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }

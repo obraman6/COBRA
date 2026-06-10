@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.PlayArrow
@@ -189,6 +190,50 @@ fun DashboardScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
         }
         Spacer(modifier = Modifier.height(24.dp))
 
+        // Rank Card
+        val myEntry by viewModel.leaderboardManager.myEntry.collectAsState()
+        val currentWins = myEntry?.wins ?: wins
+        val rank = getRankForWins(currentWins)
+        OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("Current Rank", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                val rankColor = when (rank) {
+                    RankTiers.BRONZE -> Color(0xFFcd7f32)
+                    RankTiers.SILVER -> Color(0xFFC0C0C0)
+                    RankTiers.GOLD -> Color(0xFFFFD700)
+                    RankTiers.DIAMOND -> Color(0xFF00bcd4)
+                    RankTiers.GRANDMASTER -> Color(0xFFFF4500)
+                }
+                Text(rank.displayName, fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, color = rankColor)
+                
+                val nextRankWins = RankTiers.values().firstOrNull { it.minWins > currentWins }?.minWins
+                if (nextRankWins != null) {
+                    val winsToNext = nextRankWins - currentWins
+                    Text("$winsToNext wins to next rank", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                } else {
+                    Text("Max Rank Achieved!", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                }
+                
+                val currentStreak = myEntry?.winStreak ?: 0
+                if (currentStreak >= 2) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFFFF9800).copy(alpha = 0.15f), shape = RoundedCornerShape(16.dp))
+                            .border(1.dp, Color(0xFFFF9800), RoundedCornerShape(16.dp))
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Star, contentDescription = "Win Streak", tint = Color(0xFFFF9800), modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("$currentStreak On Fire!", fontWeight = FontWeight.Bold, color = Color(0xFFFF9800))
+                        }
+                    }
+                }
+            }
+        }
+
         // Average Duration Card
         OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
             Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -270,6 +315,33 @@ fun DashboardScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 }
             }
         }
+
+        val matchHistory by viewModel.matchHistoryManager.history.collectAsState()
+        OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(stringResource(R.string.str_match_history), fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(bottom = 8.dp))
+                if (matchHistory.isEmpty()) {
+                    Text(stringResource(R.string.str_no_history), fontSize = 14.sp)
+                } else {
+                    matchHistory.take(10).forEach { match ->
+                        Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column {
+                                Text(match.opponentName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(match.gameMode, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Text(
+                                if (match.isWin) stringResource(R.string.str_win_text) else stringResource(R.string.str_loss_text_short),
+                                color = if (match.isWin) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        if (match != matchHistory.last()) {
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -304,6 +376,8 @@ fun NameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 modifier = Modifier.padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                val userAvatar by viewModel.userAvatar.collectAsState()
+
                 Icon(
                     imageVector = Icons.Filled.Person,
                     contentDescription = "Profile",
@@ -324,6 +398,33 @@ fun NameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                     modifier = Modifier.padding(bottom = 24.dp, top = 8.dp),
                     textAlign = TextAlign.Center
                 )
+
+                Text(stringResource(R.string.str_choose_avatar), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.align(Alignment.Start).padding(bottom = 8.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    MainViewModel.UserAvatar.values().toList().chunked(4).forEach { rowAvatars ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                            rowAvatars.forEach { avatar ->
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .border(
+                                            width = if (userAvatar == avatar) 3.dp else 1.dp,
+                                            color = if (userAvatar == avatar) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                            shape = CircleShape
+                                        )
+                                        .clip(CircleShape)
+                                        .clickable { viewModel.setUserAvatar(avatar) }
+                                        .background(if (userAvatar == avatar) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(text = avatar.emoji, fontSize = 24.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
 
                 OutlinedTextField(
                     value = nameInput,
@@ -381,6 +482,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     val wins by viewModel.wins.collectAsState()
     val losses by viewModel.losses.collectAsState()
     val userName by viewModel.userName.collectAsState()
+    val userAvatar by viewModel.userAvatar.collectAsState()
     val myColor by viewModel.myColor.collectAsState()
     val language by viewModel.language.collectAsState()
 
@@ -464,7 +566,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 IconButton(onClick = { showLeaderboard = false }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-                Text("Leaderboard (Global)", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+                Text(stringResource(R.string.str_leaderboard_global), fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
             }
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -474,28 +576,28 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("My Record (Local Stats)", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(stringResource(R.string.str_my_record_local), fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(bottom = 8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Wins", fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.str_wins), fontWeight = FontWeight.SemiBold)
                             Text("$wins", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("Losses", fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.str_losses), fontWeight = FontWeight.SemiBold)
                             Text("$losses", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
             }
 
-            Text("Global Leaderboard", fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(bottom = 8.dp, top = 8.dp))
+            Text(stringResource(R.string.str_leaderboard_global), fontWeight = FontWeight.Bold, fontSize = 20.sp, modifier = Modifier.padding(bottom = 8.dp, top = 8.dp))
 
             if (globalLeaderboard.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Hakuna data (No records yet)", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.str_no_data), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             } else {
                 androidx.compose.foundation.lazy.LazyColumn(
@@ -526,12 +628,13 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                                     )
                                     Column {
                                         Text(entry.playerName, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                                        Text("Score: ${entry.score}", fontSize = 14.sp)
+                                        val rank = getRankForWins(entry.wins ?: 0)
+                                        Text("${rank.displayName} • ${stringResource(R.string.str_score, entry.score ?: 0)}", fontSize = 14.sp)
                                     }
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
-                                    Text("Wins: ${entry.wins}", fontWeight = FontWeight.Medium, fontSize = 14.sp)
-                                    Text("Streak: ${entry.winStreak} \uD83D\uDD25", fontSize = 14.sp, color = Color(0xFFFF5722))
+                                    Text(stringResource(R.string.str_wins___wins, entry.wins ?: 0), fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                                    Text(stringResource(R.string.str_streak, entry.winStreak ?: 0), fontSize = 14.sp, color = Color(0xFFFF5722))
                                 }
                             }
                         }
@@ -556,10 +659,40 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 IconButton(onClick = { showSettings = false }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
-                Text(stringResource(R.string.str_settings), fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+                Text(stringResource(R.string.str_settings) + " & Themes", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
             }
             Spacer(modifier = Modifier.height(16.dp))
             
+            OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    val userAvatar by viewModel.userAvatar.collectAsState()
+                    Text(stringResource(R.string.str_your_avatar), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        MainViewModel.UserAvatar.values().toList().chunked(4).forEach { rowAvatars ->
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceAround) {
+                                rowAvatars.forEach { avatar ->
+                                    Box(
+                                        modifier = Modifier
+                                            .size(48.dp)
+                                            .border(
+                                                width = if (userAvatar == avatar) 3.dp else 1.dp,
+                                                color = if (userAvatar == avatar) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                                                shape = CircleShape
+                                            )
+                                            .clip(CircleShape)
+                                            .clickable { viewModel.setUserAvatar(avatar) }
+                                            .background(if (userAvatar == avatar) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(text = avatar.emoji, fontSize = 24.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(stringResource(R.string.str_your_name_2), fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
@@ -609,24 +742,36 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 
             OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                 Column(modifier = Modifier.padding(16.dp)) {
+                    val myEntry by viewModel.leaderboardManager.myEntry.collectAsState()
+                    val localWins by viewModel.wins.collectAsState()
+                    val totalWins = myEntry?.wins ?: localWins
                     Text(stringResource(R.string.str_choose_your_colored_pieces), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         UserPieceColor.values().forEach { c ->
-                            Box(
-                                modifier = Modifier
-                                    .size(48.dp)
-                                    .clip(CircleShape)
-                                    .background(Color(c.hex))
-                                    .clickable { viewModel.setMyColor(c) }
-                                    .padding(4.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (myColor == c) {
-                                    Box(modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.Black.copy(alpha=0.3f)))
-                                    Icon(Icons.Filled.Star, contentDescription = "Selected", tint = Color.White, modifier = Modifier.size(24.dp))
+                            val isUnlocked = totalWins >= c.requiredWins
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(c.hex))
+                                        .clickable(enabled = isUnlocked) { viewModel.setMyColor(c) }
+                                        .padding(4.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (!isUnlocked) {
+                                        Box(modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.Black.copy(alpha=0.6f)))
+                                        Icon(Icons.Filled.Info, contentDescription = "Locked", tint = Color.White, modifier = Modifier.size(24.dp))
+                                    } else if (myColor == c) {
+                                        Box(modifier = Modifier.fillMaxSize().clip(CircleShape).background(Color.Black.copy(alpha=0.3f)))
+                                        Icon(Icons.Filled.Star, contentDescription = "Selected", tint = Color.White, modifier = Modifier.size(24.dp))
+                                    }
+                                }
+                                if (!isUnlocked) {
+                                    Text("${c.requiredWins}W", fontSize = 10.sp, color = MaterialTheme.colorScheme.error)
                                 }
                             }
                         }
@@ -637,7 +782,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     val language by viewModel.language.collectAsState()
-                    Text(if (language == MainViewModel.Language.ENGLISH) "Language:" else "Lugha:", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    Text(stringResource(R.string.str_language), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         RadioButton(
                             selected = language == MainViewModel.Language.ENGLISH,
@@ -651,6 +796,32 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                             onClick = { viewModel.setLanguage(MainViewModel.Language.SWAHILI) }
                         )
                         Text("Swahili", fontWeight = FontWeight.Medium)
+                    }
+                }
+            }
+
+            OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    val boardTheme by viewModel.boardTheme.collectAsState()
+                    val myEntry by viewModel.leaderboardManager.myEntry.collectAsState()
+                    val localWins by viewModel.wins.collectAsState()
+                    val totalWins = myEntry?.wins ?: localWins
+                    Text(stringResource(R.string.str_board_theme), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
+                    MainViewModel.BoardTheme.values().forEach { bt ->
+                        val isUnlocked = totalWins >= bt.requiredWins
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(
+                                selected = boardTheme == bt,
+                                onClick = { if(isUnlocked) viewModel.setBoardTheme(bt) },
+                                enabled = isUnlocked
+                            )
+                            Column {
+                                Text(bt.displayName, fontWeight = FontWeight.Medium, color = if (isUnlocked) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha=0.5f))
+                                if (!isUnlocked) {
+                                    Text(stringResource(R.string.str_unlocks_at_wins, bt.requiredWins), fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -762,7 +933,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             }
             
             Text(
-                text = "Habari, $userName! \uD83D\uDC4B",
+                text = stringResource(R.string.str_hello_user, "${userAvatar.emoji} $userName"),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.8f),
@@ -934,10 +1105,26 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                     }
                     
                     Column(modifier = Modifier.padding(top = 16.dp)) {
-                        Text("Status: $onlineStatus", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 8.dp))
+                        Text(stringResource(R.string.str_status, onlineStatus), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 8.dp))
                         if (roomState != null) {
                             Text(stringResource(R.string.str_room_id____roomstate__roomid, roomState?.roomId ?: ""), fontSize = 20.sp, fontWeight = FontWeight.Black)
                             if (roomState?.status == "WAITING") {
+                                val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+                                val toastContext = androidx.compose.ui.platform.LocalContext.current
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                                    Button(onClick = {
+                                        clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(roomState?.roomId ?: ""))
+                                        android.widget.Toast.makeText(toastContext, "Copied!", android.widget.Toast.LENGTH_SHORT).show()
+                                    }) {
+                                        Text("Copy Code")
+                                    }
+                                    Button(
+                                        onClick = { viewModel.cancelOnlineRoom() },
+                                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                    ) {
+                                        Text("Cancel")
+                                    }
+                                }
                                 CircularProgressIndicator(modifier = Modifier.padding(top = 8.dp).size(24.dp))
                                 Text(stringResource(R.string.str_waiting_for_opponent), modifier = Modifier.padding(top = 8.dp))
                             } else if (roomState?.status == "PLAYING") {
@@ -982,6 +1169,85 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             }
         }
         
+        AnimatedVisibility(visible = gameMode == GameMode.ONLINE) {
+            OutlinedCard(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
+                colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+            ) {
+                var friendSearchQuery by remember { mutableStateOf("") }
+                val searchResults by viewModel.friendManager.searchResults.collectAsState()
+                val friends by viewModel.friendManager.friends.collectAsState()
+                val scope = rememberCoroutineScope()
+                
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text("Friends & Invites", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    OutlinedTextField(
+                        value = friendSearchQuery,
+                        onValueChange = { 
+                            friendSearchQuery = it 
+                            scope.launch { viewModel.friendManager.searchUsers(it) }
+                        },
+                        label = { Text("Search by username") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    
+                    if (searchResults.isNotEmpty() && friendSearchQuery.length >= 3) {
+                        androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.heightIn(max = 150.dp).fillMaxWidth().padding(top = 8.dp)) {
+                            items(searchResults.size) { idx ->
+                                val user = searchResults[idx]
+                                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Text(user.username, fontWeight = FontWeight.Medium)
+                                    Button(onClick = { scope.launch { viewModel.friendManager.addFriend(user.uid, user.username) } }) {
+                                        Text("Add")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("My Friends", fontWeight = FontWeight.Bold)
+                    if (friends.isEmpty()) {
+                        Text("No friends to show.", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha=0.6f))
+                    } else {
+                        friends.forEach { friend ->
+                            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                Column {
+                                    Text(friend.username, fontWeight = FontWeight.Bold)
+                                    Text(if (friend.isOnline) "Online" else "Offline", fontSize = 12.sp, color = if (friend.isOnline) Color.Green else Color.Gray)
+                                }
+                                if (friend.inviteRoomId.isNotEmpty()) {
+                                    Button(onClick = { 
+                                        scope.launch { 
+                                            viewModel.onlineMatchManager.joinRoom(friend.inviteRoomId, userName)
+                                            viewModel.startGame()
+                                            viewModel.friendManager.clearInvite(friend.uid)
+                                        } 
+                                    }, colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)) {
+                                        Text("Join Game")
+                                    }
+                                } else if (friend.isOnline) {
+                                    Button(onClick = { 
+                                        scope.launch {
+                                            val roomId = viewModel.onlineMatchManager.createRoom(userName)
+                                            viewModel.friendManager.sendInvite(friend.uid, roomId)
+                                        }
+                                    }) {
+                                        Text("Invite")
+                                    }
+                                }
+                            }
+                            HorizontalDivider()
+                        }
+                    }
+                }
+            }
+        }
+
         if (gameMode != GameMode.WIFI && gameMode != GameMode.ONLINE) {
             Button(
                 onClick = { viewModel.startGame() },
@@ -1009,6 +1275,7 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
     val alertMessage by viewModel.alertMessage.collectAsState()
     val winner by viewModel.winner.collectAsState()
     val userName by viewModel.userName.collectAsState()
+    val userAvatar by viewModel.userAvatar.collectAsState()
     val myColor by viewModel.myColor.collectAsState()
     val language by viewModel.language.collectAsState()
     val activeEmote by viewModel.activeEmote.collectAsState()
@@ -1018,14 +1285,17 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
     val netStatus by NetworkManager.connectionStatus.collectAsState()
     val netRole by NetworkManager.role.collectAsState()
     val opponentName by NetworkManager.opponentName.collectAsState()
+    
+    val matchTimerString by viewModel.matchTimerString.collectAsState()
+    val boardTheme by viewModel.boardTheme.collectAsState()
 
-    val p1Name = userName
+    val p1Name = "${userAvatar.emoji} $userName"
     // For ONLINE mode, we could technically get the guest name, but usually it's fast. Let's just use "Mpinzani" or keep it generic
-    val p2Name = if (gameMode == GameMode.VS_AI) "Kompyuta" else if (gameMode == GameMode.WIFI) (opponentName ?: "Mpinzani") else {
+    val p2Name = if (gameMode == GameMode.VS_AI) stringResource(R.string.str_computer) else if (gameMode == GameMode.WIFI) (opponentName ?: stringResource(R.string.str_opponent)) else {
         val rs = viewModel.onlineMatchManager.roomState.value
         val isMimiHost = rs?.hostId == viewModel.onlineMatchManager.myPlayerId
         val opName = if (isMimiHost) rs?.guestName else rs?.hostName
-        if (!opName.isNullOrEmpty()) opName else "Mpinzani"
+        if (!opName.isNullOrEmpty()) opName else stringResource(R.string.str_opponent)
     }
 
     val myPlayerSide = if (gameMode == GameMode.WIFI && netRole == NetworkRole.CLIENT) Player.RED else if (gameMode == GameMode.ONLINE && viewModel.onlineMatchManager.roomState.value?.guestId == viewModel.onlineMatchManager.myPlayerId) Player.RED else Player.WHITE
@@ -1034,14 +1304,25 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
         if (p == myPlayerSide) p1Name else p2Name
     }
 
-    alertMessage?.let { msg ->
+    alertMessage?.let { rawMsg ->
+        val msg = when (rawMsg) {
+            "opponent_resigned" -> stringResource(R.string.str_alert_opponent_resigned)
+            "disconnected" -> stringResource(R.string.str_alert_disconnected)
+            "room_cancelled" -> stringResource(R.string.str_alert_room_cancelled)
+            "opponent_left" -> stringResource(R.string.str_alert_opponent_left)
+            "must_continue_capture" -> stringResource(R.string.str_alert_must_continue_capture)
+            "mandatory_capture" -> stringResource(R.string.str_alert_mandatory_capture)
+            else -> if (rawMsg.startsWith("level_unlocked:")) {
+                stringResource(R.string.str_alert_level_unlocked, rawMsg.substringAfter(":"))
+            } else rawMsg
+        }
         AlertDialog(
             onDismissRequest = { viewModel.clearAlert() },
-            title = { Text("Taarifa (Alert)") },
+            title = { Text(stringResource(R.string.str_alert_title)) },
             text = { Text(msg) },
             confirmButton = {
                 TextButton(onClick = { viewModel.clearAlert() }) {
-                    Text("Sawa")
+                    Text(stringResource(R.string.str_ok))
                 }
             }
         )
@@ -1067,9 +1348,9 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                 )
                 Text(
                     text = when(gameMode) {
-                        GameMode.VS_AI -> "Mchezaji 1 vs Kompyuta (${aiLevel.display})"
-                        GameMode.WIFI -> "Wachezaji 2 (WiFi)"
-                        GameMode.ONLINE -> "Wachezaji 2 (Online)"
+                        GameMode.VS_AI -> stringResource(R.string.str_gamemode_vs_ai, aiLevel.display)
+                        GameMode.WIFI -> stringResource(R.string.str_gamemode_wifi)
+                        GameMode.ONLINE -> stringResource(R.string.str_gamemode_online)
                         else -> ""
                     },
                     fontSize = 12.sp,
@@ -1113,7 +1394,7 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
         ) {
             // Home / Player 1
             Column(horizontalAlignment = Alignment.Start) {
-                Text(if (gameMode == GameMode.WIFI || gameMode == GameMode.ONLINE) "HOME" else "MCHEZAJI 1", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = myComposeColor)
+                Text(if (gameMode == GameMode.WIFI || gameMode == GameMode.ONLINE) stringResource(R.string.str_home_player) else stringResource(R.string.str_player_1), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = myComposeColor)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(p1Name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     AnimatedVisibility(visible = homeEmote != null) {
@@ -1124,7 +1405,7 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
             Text("VS", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onBackground.copy(alpha=0.3f), fontSize = 20.sp)
             // Away / Player 2
             Column(horizontalAlignment = Alignment.End) {
-                Text(if (gameMode == GameMode.WIFI || gameMode == GameMode.ONLINE) "AWAY" else "MPINZANI", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = opponentComposeColor)
+                Text(if (gameMode == GameMode.WIFI || gameMode == GameMode.ONLINE) stringResource(R.string.str_away_player) else stringResource(R.string.str_opponent).uppercase(), fontSize = 11.sp, fontWeight = FontWeight.Bold, color = opponentComposeColor)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AnimatedVisibility(visible = awayEmote != null) {
                         Text(awayEmote ?: "", fontSize = 24.sp, modifier = Modifier.padding(end = 8.dp))
@@ -1134,7 +1415,36 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
             }
         }
         
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Match Stats Row
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.str_match_time, matchTimerString),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha=0.7f)
+            )
+            
+            if (gameMode == GameMode.VS_AI || gameMode == GameMode.PASS_AND_PLAY) {
+                IconButton(onClick = { viewModel.undoMove() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Undo", tint = MaterialTheme.colorScheme.primary)
+                }
+            }
+
+            Text(
+                text = stringResource(R.string.str_match_moves, boardState.moveCount),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onBackground.copy(alpha=0.7f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Turn indicator
         val isMimi = boardState.currentPlayer == myPlayerSide
@@ -1168,6 +1478,19 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
         val shouldRotate = myPlayerSide == Player.RED
         val boardRotation = if (shouldRotate) 180f else 0f
 
+        val themeDarkColor = when(boardTheme) {
+            MainViewModel.BoardTheme.CLASSIC -> BoardDark
+            MainViewModel.BoardTheme.FOREST -> Color(0xFF2E7D32)
+            MainViewModel.BoardTheme.OCEAN -> Color(0xFF0277BD)
+            MainViewModel.BoardTheme.DARK -> Color(0xFF424242)
+        }
+        val themeLightColor = when(boardTheme) {
+            MainViewModel.BoardTheme.CLASSIC -> BoardLight
+            MainViewModel.BoardTheme.FOREST -> Color(0xFFC8E6C9)
+            MainViewModel.BoardTheme.OCEAN -> Color(0xFFB3E5FC)
+            MainViewModel.BoardTheme.DARK -> Color(0xFF9E9E9E)
+        }
+
         // Board
         BoxWithConstraints(
             modifier = Modifier
@@ -1186,7 +1509,7 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                 .border(2.dp, PaletteLightBlue, RoundedCornerShape(12.dp))
                 .padding(12.dp) // The wooden rim
                 .clip(RoundedCornerShape(4.dp))
-                .background(BoardLight)
+                .background(themeLightColor)
                 .graphicsLayer { rotationZ = boardRotation }
         ) {
             val tileSize = maxWidth / 8
@@ -1201,7 +1524,7 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                 for (y in 0..7) {
                     for (x in 0..7) {
                         val isDark = (x + y) % 2 != 0
-                        val color = if (isDark) BoardDark else BoardLight
+                        val color = if (isDark) themeDarkColor else themeLightColor
                         drawRect(
                             color = color,
                             topLeft = Offset(x * w, y * h),
@@ -1236,6 +1559,22 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                             )
                         }
                     }
+                }
+                
+                // Draw Last Move Highlights
+                boardState.lastMove?.let { lm ->
+                    // Highlight 'From' square
+                    drawRect(
+                        color = Color.Yellow.copy(alpha = 0.35f),
+                        topLeft = Offset(lm.from.x * w, lm.from.y * h),
+                        size = androidx.compose.ui.geometry.Size(w, h)
+                    )
+                    // Highlight 'To' square
+                    drawRect(
+                        color = Color.Yellow.copy(alpha = 0.5f),
+                        topLeft = Offset(lm.to.x * w, lm.to.y * h),
+                        size = androidx.compose.ui.geometry.Size(w, h)
+                    )
                 }
             }
 
@@ -1304,7 +1643,7 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                 }
             }
 
-            // Draw clickable overlay and pieces (for interactions)
+            // Draw clickable overlay (for interactions only)
             for (y in 0..7) {
                 for (x in 0..7) {
                     val pos = Pos(x, y)
@@ -1316,11 +1655,27 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                                 haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 viewModel.onSquareClicked(pos) 
                             }
+                    )
+                }
+            }
+            
+            // Draw pieces with fluid animation
+            boardState.pieces.forEach { (pos, piece) ->
+                key(piece.id) {
+                    val animatedX by androidx.compose.animation.core.animateDpAsState(
+                        targetValue = tileSize * pos.x,
+                        animationSpec = spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
+                    )
+                    val animatedY by androidx.compose.animation.core.animateDpAsState(
+                        targetValue = tileSize * pos.y,
+                        animationSpec = spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .offset(x = animatedX, y = animatedY)
+                            .size(tileSize)
                     ) {
-                        val piece = boardState.pieces[pos]
-                        if (piece != null) {
-                            PieceView(piece = piece, size = tileSize, p1Color = myComposeColor, p2Color = opponentComposeColor, rotation = boardRotation)
-                        }
+                        PieceView(piece = piece, size = tileSize, p1Color = myComposeColor, p2Color = opponentComposeColor, rotation = boardRotation)
                     }
                 }
             }
@@ -1347,7 +1702,7 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
         }
 
         if (gameMode == GameMode.ONLINE) {
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Card(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
                 shape = RoundedCornerShape(24.dp),
@@ -1366,6 +1721,89 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                                 viewModel.sendEmote(emoji)
                             }
                         )
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            var chatText by remember { mutableStateOf("") }
+            val chatMessages by viewModel.chatMessages.collectAsState()
+            
+            OutlinedCard(modifier = Modifier.fillMaxWidth().height(160.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
+                Column(modifier = Modifier.fillMaxSize().padding(8.dp)) {
+                    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+                    LaunchedEffect(chatMessages.size) {
+                        if (chatMessages.isNotEmpty()) {
+                            listState.animateScrollToItem(chatMessages.size - 1)
+                        }
+                    }
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        state = listState,
+                        modifier = Modifier.weight(1f).fillMaxWidth()
+                    ) {
+                        items(chatMessages.size) { index ->
+                            val msg = chatMessages[index]
+                            val parts = msg.split(":", limit = 2)
+                            val sender = parts[0]
+                            val isMe = sender == userName
+                            val textStr = if (parts.size > 1) parts[1].trim() else ""
+                            
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = if (isMe) Arrangement.End else Arrangement.Start
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(
+                                            color = if (isMe) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                            shape = RoundedCornerShape(
+                                                topStart = 16.dp, 
+                                                topEnd = 16.dp, 
+                                                bottomStart = if (isMe) 16.dp else 4.dp, 
+                                                bottomEnd = if (isMe) 4.dp else 16.dp
+                                            )
+                                        )
+                                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                                        .widthIn(max = 240.dp)
+                                ) {
+                                    Column {
+                                        if (!isMe) {
+                                            Text(
+                                                text = sender, 
+                                                fontSize = 10.sp, 
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                                modifier = Modifier.padding(bottom = 2.dp),
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                        Text(
+                                            text = textStr,
+                                            fontSize = 14.sp,
+                                            color = if (isMe) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = chatText, 
+                            onValueChange = { chatText = it },
+                            modifier = Modifier.weight(1f).height(50.dp),
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(fontSize = 14.sp),
+                            placeholder = { Text(stringResource(R.string.str_type_chat_message), fontSize = 12.sp) }
+                        )
+                        IconButton(onClick = { 
+                            if(chatText.isNotBlank()) {
+                                viewModel.sendTextMessage(chatText)
+                                chatText = ""
+                            }
+                        }) {
+                            Icon(Icons.AutoMirrored.Filled.Send, "Send", tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
                 }
             }
@@ -1408,7 +1846,9 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
         
         winner?.let { w ->
             val isMyWin = w == myPlayerSide
-            val resultText = if (isMyWin) "YOU WIN" else "YOU LOSS"
+            val winText = stringResource(R.string.str_win_congrats)
+            val lossText = stringResource(R.string.str_loss_text)
+            val resultText = if (isMyWin) winText else lossText
             
             Box(
                 modifier = Modifier
@@ -1416,10 +1856,13 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                     .background(Color.Black.copy(alpha = 0.7f)),
                 contentAlignment = Alignment.Center
             ) {
+                if (isMyWin) {
+                    ConfettiEffect()
+                }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = resultText,
-                        fontSize = 48.sp,
+                        fontSize = 42.sp,
                         fontWeight = FontWeight.ExtraBold,
                         color = KingGold
                     )
@@ -1436,8 +1879,8 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                         }
                         Button(
                             onClick = { 
-                                viewModel.clearWinner()
                                 viewModel.quitToMenu() 
+                                viewModel.clearWinner()
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                             shape = RoundedCornerShape(12.dp)
@@ -1447,6 +1890,42 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun ConfettiEffect() {
+    val confettiCount = 50
+    Box(modifier = Modifier.fillMaxSize()) {
+        for (i in 0 until confettiCount) {
+            val startX = remember { kotlin.random.Random.nextFloat() * 1000f - 500f }
+            val startY = remember { kotlin.random.Random.nextFloat() * -500f - 200f }
+            val color = remember { listOf(Color.Red, Color.Green, Color.Blue, Color.Yellow, Color.Magenta).random() }
+            
+            val animatedY by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = 2500f,
+                animationSpec = androidx.compose.animation.core.tween(
+                    durationMillis = remember { kotlin.random.Random.nextInt(2000, 4000) },
+                    delayMillis = remember { kotlin.random.Random.nextInt(0, 1000) },
+                    easing = androidx.compose.animation.core.LinearEasing
+                ),
+                label = ""
+            )
+
+            val animatedRotation by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = 360f * 5f,
+                animationSpec = androidx.compose.animation.core.tween(durationMillis = 4000, easing = androidx.compose.animation.core.LinearEasing),
+                label = ""
+            )
+
+            Box(
+                modifier = Modifier
+                    .offset(x = startX.dp, y = (startY + animatedY).dp)
+                    .size(12.dp)
+                    .graphicsLayer { rotationZ = animatedRotation }
+                    .background(color)
+            )
         }
     }
 }
