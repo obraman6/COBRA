@@ -45,6 +45,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val onlineMatchManager = OnlineMatchManager()
     val leaderboardManager = LeaderboardManager()
+    
+    private var lastProcessedMoveStr = ""
 
     val wallet: StateFlow<Wallet?> = walletRepository.getWallet().stateIn(
         scope = viewModelScope,
@@ -184,6 +186,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _activeEmote = MutableStateFlow<Pair<Player, String>?>(null)
     val activeEmote: StateFlow<Pair<Player, String>?> = _activeEmote.asStateFlow()
 
+    private fun getMyPlayerSide(): Player {
+        if (_gameMode.value == GameMode.WIFI && NetworkManager.role.value == NetworkRole.CLIENT) {
+            return Player.RED
+        }
+        if (_gameMode.value == GameMode.ONLINE && onlineMatchManager.roomState.value?.guestId == onlineMatchManager.myPlayerId) {
+            return Player.RED
+        }
+        return Player.WHITE
+    }
+
     init {
         viewModelScope.launch {
             leaderboardManager.loadGlobalLeaderboard()
@@ -199,44 +211,65 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             // Received a move from the network
             applyMove(move)
         }
+        NetworkManager.setResignCallback {
+            if (_appState.value == AppState.PLAYING && _winner.value == null) {
+                declareWinner(getMyPlayerSide())
+                _alertMessage.value = "Mpinzani amejitoa! Umeshinda."
+            }
+        }
         viewModelScope.launch {
-            var lastEmoteStr = ""
-            onlineMatchManager.roomState.collect { room ->
-                if (_gameMode.value == GameMode.ONLINE && room != null && room.status == "PLAYING") {
-                    
-                    if (room.lastEmote.isNotEmpty() && room.lastEmote != lastEmoteStr) {
-                        lastEmoteStr = room.lastEmote
-                        val parts = room.lastEmote.split("|")
-                        if (parts.size >= 3) {
-                            val senderId = parts[0]
-                            val emoji = parts[1]
-                            val amHost = room.hostId == onlineMatchManager.myPlayerId
-                            val senderSide = if (senderId == room.hostId) Player.WHITE else Player.RED
-                            
-                            _activeEmote.value = Pair(senderSide, emoji)
-                            // Clear emote after 2.5 seconds
-                            viewModelScope.launch {
-                                delay(2500)
-                                if (_activeEmote.value?.second == emoji) {
-                                    _activeEmote.value = null
-                                }
-                            }
-                        }
-                    }
-
-                    if (room.lastMove.isNotEmpty()) {
-                        val amHost = room.hostId == onlineMatchManager.myPlayerId
-                        val myPlayerSide = if (amHost) Player.WHITE else Player.RED
-                        // If it's my turn in the local state, but the server says the other guy just moved
-                        val lastMove = parseMoveString(room.lastMove)
-                        if (lastMove != null && _boardState.value.currentPlayer == myPlayerSide) {
-                            applyMove(lastMove)
-                        }
-                    }
+            NetworkManager.isConnected.collect { connected ->
+                if (!connected && _appState.value == AppState.PLAYING && _gameMode.value == GameMode.WIFI && _winner.value == null) {
+                    declareWinner(getMyPlayerSide())
+                    _alertMessage.value = "Muunganisho umekatika! Umeshinda mchezo."
                 }
             }
         }
-    }
+        viewModelScope.launch {
+            var lastEmoteStr = ""
+            onlineMatchManager.roomState.collect { room ->
+                if (_gameMode.value == GameMode.ONLINE) {
+                    if (room == null && _appState.value == AppState.PLAYING && _winner.value == null) {
+                        declareWinner(getMyPlayerSide())
+                        _alertMessage.value = "Chumba kimefutwa (Room cancelled)! Mpinzani ametoka."
+                    } else if (room != null) {
+                        if (room.status == "FINISHED" && _appState.value == AppState.PLAYING && _winner.value == null) {
+                            declareWinner(getMyPlayerSide())
+                            _alertMessage.value = "Mpinzani amejitoa au ametoka! Umeshinda."
+                        } else if (room.status == "PLAYING") {
+                            if (room.lastEmote.isNotEmpty() && room.lastEmote != lastEmoteStr) {
+                            lastEmoteStr = room.lastEmote
+                            val parts = room.lastEmote.split("|")
+                            if (parts.size >= 3) {
+                                val senderId = parts[0]
+                                val emoji = parts[1]
+                                val amHost = room.hostId == onlineMatchManager.myPlayerId
+                                val senderSide = if (senderId == room.hostId) Player.WHITE else Player.RED
+                                
+                                _activeEmote.value = Pair(senderSide, emoji)
+                                // Clear emote after 2.5 seconds
+                                viewModelScope.launch {
+                                    delay(2500)
+                                    if (_activeEmote.value?.second == emoji) {
+                                        _activeEmote.value = null
+                                    }
+                                }
+                            }
+                        }
+
+                        if (room.lastMove.isNotEmpty() && room.lastMove != lastProcessedMoveStr) {
+                            val lastMove = parseMoveString(room.lastMove)
+                            if (lastMove != null) {
+                                lastProcessedMoveStr = room.lastMove
+                                applyMove(lastMove)
+                            }
+                        }
+                    }
+                }
+            } // close else if (room != null)
+        } // close collect
+    } // close launch
+} // close init
 
     fun sendEmote(emoji: String) {
         if (_gameMode.value == GameMode.ONLINE) {
@@ -299,6 +332,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun quitToMenu() {
+        if (_appState.value == AppState.PLAYING) {
+            val myPlayerSide = getMyPlayerSide()
+            val opponentSide = if (myPlayerSide == Player.WHITE) Player.RED else Player.WHITE
+            
+            if (_gameMode.value == GameMode.WIFI) {
+                NetworkManager.sendResign()
+                declareWinner(opponentSide)
+            } else if (_gameMode.value == GameMode.ONLINE) {
+                val room = onlineMatchManager.roomState.value
+                if (room != null && room.status == "PLAYING") {
+                    viewModelScope.launch {
+                        onlineMatchManager.setFinished(room.roomId)
+                        onlineMatchManager.deleteRoom(room.roomId)
+                    }
+                }
+                declareWinner(opponentSide)
+            } else if (_gameMode.value == GameMode.VS_AI) {
+                declareWinner(opponentSide)
+            }
+        } else if (_gameMode.value == GameMode.ONLINE) {
+            val room = onlineMatchManager.roomState.value
+            if (room != null) {
+                viewModelScope.launch {
+                    onlineMatchManager.deleteRoom(room.roomId)
+                }
+            }
+        }
         _appState.value = AppState.MENU
         NetworkManager.disconnect()
     }
@@ -339,6 +399,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val amHost = room.hostId == onlineMatchManager.myPlayerId
                 val myPlayerSide = if (amHost) Player.WHITE else Player.RED
                 if (currentState.currentPlayer != myPlayerSide) return
+                if (room.turn != myPlayerSide) return
             } else {
                 return
             }
@@ -379,9 +440,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     NetworkManager.sendMove(move)
                 }
                 if (_gameMode.value == GameMode.ONLINE) {
+                    val moveStr = moveToString(move)
+                    lastProcessedMoveStr = moveStr
                     viewModelScope.launch(Dispatchers.IO) {
                         try {
-                            onlineMatchManager.sendMove(onlineMatchManager.roomState.value?.roomId ?: "", moveToString(move), _boardState.value.currentPlayer)
+                            onlineMatchManager.sendMove(onlineMatchManager.roomState.value?.roomId ?: "", moveStr, _boardState.value.currentPlayer)
                         } catch (e: Exception) {
                             e.printStackTrace()
                         }
@@ -449,6 +512,96 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun declareWinner(w: Player) {
+        if (_winner.value != null) return
+        _winner.value = w
+        
+        // Update Duration and Total Games
+        if (startMatchTimeMillis > 0) {
+            val matchDuration = System.currentTimeMillis() - startMatchTimeMillis
+            _totalDurationMs.value += matchDuration
+            prefs.edit().putLong("totalDurationMs", _totalDurationMs.value).apply()
+            startMatchTimeMillis = 0L // reset so we don't accidentally add it again
+        }
+        
+        _totalGames.value += 1
+        prefs.edit().putInt("totalGames", _totalGames.value).apply()
+
+        if (_gameMode.value == GameMode.VS_AI) {
+            if (w == Player.WHITE) {
+                _wins.value += 1
+                prefs.edit().putInt("wins", _wins.value).apply()
+                if (!_rewardGivenForCurrentGame) {
+                    viewModelScope.launch {
+                        leaderboardManager.updatePlayerStats(_userName.value, true)
+                        val coins = when (_aiLevel.value) {
+                            AiLevel.EASY -> 50
+                            AiLevel.HARD -> 150
+                            AiLevel.SUPER_HARD -> 300
+                        }
+                        walletRepository.recordSinglePlayerWin(_aiLevel.value.name, coins)
+
+                        // Unlock next level if they won on their highest currently unlocked level
+                        if (_aiLevel.value == _highestUnlockedAiLevel.value) {
+                            val currentOrdinal = _aiLevel.value.ordinal
+                            if (currentOrdinal < AiLevel.values().size - 1) {
+                                val nextLevel = AiLevel.values()[currentOrdinal + 1]
+                                _highestUnlockedAiLevel.value = nextLevel
+                                prefs.edit().putString("highestUnlockedAiLevel", nextLevel.name).apply()
+                                _aiLevel.value = nextLevel
+                                _alertMessage.value = "Hongera! Umeshinda level hii na kufungua ${nextLevel.display}! \uD83D\uDD13"
+                            }
+                        }
+                    }
+                    _rewardGivenForCurrentGame = true
+                }
+            } else if (w == Player.RED) {
+                _losses.value += 1
+                prefs.edit().putInt("losses", _losses.value).apply()
+                if (!_rewardGivenForCurrentGame) {
+                    viewModelScope.launch {
+                        leaderboardManager.updatePlayerStats(_userName.value, false)
+                    }
+                    _rewardGivenForCurrentGame = true
+                }
+            }
+        } else if (_gameMode.value == GameMode.WIFI) {
+            // handle wifi bets
+            if (NetworkManager.role.value != NetworkRole.NONE && NetworkManager.betAmount.value > 0) {
+                val amHost = NetworkManager.role.value == NetworkRole.HOST
+                val myPlayer = if (amHost) Player.WHITE else Player.RED
+                if (!_rewardGivenForCurrentGame) {
+                    viewModelScope.launch {
+                        if (w == myPlayer) {
+                            leaderboardManager.updatePlayerStats(_userName.value, true)
+                            walletRepository.recordBetWin(NetworkManager.betAmount.value)
+                        } else {
+                            leaderboardManager.updatePlayerStats(_userName.value, false)
+                            walletRepository.recordBetLoss(NetworkManager.betAmount.value)
+                        }
+                    }
+                    _rewardGivenForCurrentGame = true
+                }
+            }
+        } else if (_gameMode.value == GameMode.ONLINE) {
+            val room = onlineMatchManager.roomState.value
+            if (room != null) {
+                val amHost = room.hostId == onlineMatchManager.myPlayerId
+                val myPlayer = if (amHost) Player.WHITE else Player.RED
+                if (!_rewardGivenForCurrentGame) {
+                    viewModelScope.launch {
+                        if (w == myPlayer) {
+                            leaderboardManager.updatePlayerStats(_userName.value, true)
+                        } else {
+                            leaderboardManager.updatePlayerStats(_userName.value, false)
+                        }
+                    }
+                    _rewardGivenForCurrentGame = true
+                }
+            }
+        }
+    }
+
     private fun checkWinner(state: BoardState) {
         val moves = GameEngine.getValidMoves(state)
         var w: Player? = null
@@ -462,92 +615,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         if (w != null) {
-            _winner.value = w
-            
-            // Update Duration and Total Games
-            if (startMatchTimeMillis > 0) {
-                val matchDuration = System.currentTimeMillis() - startMatchTimeMillis
-                _totalDurationMs.value += matchDuration
-                prefs.edit().putLong("totalDurationMs", _totalDurationMs.value).apply()
-                startMatchTimeMillis = 0L // reset so we don't accidentally add it again
-            }
-            
-            _totalGames.value += 1
-            prefs.edit().putInt("totalGames", _totalGames.value).apply()
-
-            if (_gameMode.value == GameMode.VS_AI) {
-                if (w == Player.WHITE) {
-                    _wins.value += 1
-                    prefs.edit().putInt("wins", _wins.value).apply()
-                    if (!_rewardGivenForCurrentGame) {
-                        viewModelScope.launch {
-                            leaderboardManager.updatePlayerStats(_userName.value, true)
-                            val coins = when (_aiLevel.value) {
-                                AiLevel.EASY -> 50
-                                AiLevel.HARD -> 150
-                                AiLevel.SUPER_HARD -> 300
-                            }
-                            walletRepository.recordSinglePlayerWin(_aiLevel.value.name, coins)
-
-                            // Unlock next level if they won on their highest currently unlocked level
-                            if (_aiLevel.value == _highestUnlockedAiLevel.value) {
-                                val currentOrdinal = _aiLevel.value.ordinal
-                                if (currentOrdinal < AiLevel.values().size - 1) {
-                                    val nextLevel = AiLevel.values()[currentOrdinal + 1]
-                                    _highestUnlockedAiLevel.value = nextLevel
-                                    prefs.edit().putString("highestUnlockedAiLevel", nextLevel.name).apply()
-                                    _aiLevel.value = nextLevel
-                                    _alertMessage.value = "Hongera! Umeshinda level hii na kufungua ${nextLevel.display}! \uD83D\uDD13"
-                                }
-                            }
-                        }
-                        _rewardGivenForCurrentGame = true
-                    }
-                } else if (w == Player.RED) {
-                    _losses.value += 1
-                    prefs.edit().putInt("losses", _losses.value).apply()
-                    if (!_rewardGivenForCurrentGame) {
-                        viewModelScope.launch {
-                            leaderboardManager.updatePlayerStats(_userName.value, false)
-                        }
-                        _rewardGivenForCurrentGame = true
-                    }
-                }
-            } else if (_gameMode.value == GameMode.WIFI) {
-                // handle wifi bets
-                if (NetworkManager.role.value != NetworkRole.NONE && NetworkManager.betAmount.value > 0) {
-                    val amHost = NetworkManager.role.value == NetworkRole.HOST
-                    val myPlayer = if (amHost) Player.WHITE else Player.RED
-                    if (!_rewardGivenForCurrentGame) {
-                        viewModelScope.launch {
-                            if (w == myPlayer) {
-                                leaderboardManager.updatePlayerStats(_userName.value, true)
-                                walletRepository.recordBetWin(NetworkManager.betAmount.value)
-                            } else {
-                                leaderboardManager.updatePlayerStats(_userName.value, false)
-                                walletRepository.recordBetLoss(NetworkManager.betAmount.value)
-                            }
-                        }
-                        _rewardGivenForCurrentGame = true
-                    }
-                }
-            } else if (_gameMode.value == GameMode.ONLINE) {
-                val room = onlineMatchManager.roomState.value
-                if (room != null) {
-                    val amHost = room.hostId == onlineMatchManager.myPlayerId
-                    val myPlayer = if (amHost) Player.WHITE else Player.RED
-                    if (!_rewardGivenForCurrentGame) {
-                        viewModelScope.launch {
-                            if (w == myPlayer) {
-                                leaderboardManager.updatePlayerStats(_userName.value, true)
-                            } else {
-                                leaderboardManager.updatePlayerStats(_userName.value, false)
-                            }
-                        }
-                        _rewardGivenForCurrentGame = true
-                    }
-                }
-            }
+            declareWinner(w)
         }
     }
 
@@ -597,6 +665,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun restartGame() {
+        lastProcessedMoveStr = ""
         startMatchTimeMillis = System.currentTimeMillis()
         _boardState.value = GameEngine.createInitialBoard(_rules.value)
         _selectedPos.value = null

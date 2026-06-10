@@ -8,6 +8,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -59,6 +60,9 @@ import com.example.ui.theme.KingGold
 import com.example.ui.theme.MyApplicationTheme
 import com.example.ui.theme.PieceRed
 import com.example.ui.theme.PieceWhite
+import com.example.ui.theme.PaletteCream
+import com.example.ui.theme.PaletteNavy
+import com.example.ui.theme.PaletteLightBlue
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
@@ -186,7 +190,7 @@ fun DashboardScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
         Spacer(modifier = Modifier.height(24.dp))
 
         // Average Duration Card
-        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+        OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
             Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(stringResource(R.string.str_average_match_duration), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -205,7 +209,7 @@ fun DashboardScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
         }
 
         // Win / Loss Ratio Chart
-        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+        OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
             Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(stringResource(R.string.str_win___loss_ratio__vs_ai), fontWeight = FontWeight.Bold, fontSize = 18.sp)
                 Spacer(modifier = Modifier.height(16.dp))
@@ -273,7 +277,7 @@ fun DashboardScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 fun NameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
     val language by viewModel.language.collectAsState()
 
-    var nameInput by remember { mutableStateOf("COBRA") }
+    var nameInput by remember { mutableStateOf("") }
     var showError by remember { mutableStateOf(false) }
 
     Box(
@@ -500,9 +504,10 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 ) {
                     items(globalLeaderboard.size) { index ->
                         val entry = globalLeaderboard[index]
-                        Card(
+                        OutlinedCard(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                            colors = CardDefaults.outlinedCardColors(
                                 containerColor = if (entry.playerId == com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid) 
                                     MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                             )
@@ -555,7 +560,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             }
             Spacer(modifier = Modifier.height(16.dp))
             
-            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(stringResource(R.string.str_your_name_2), fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp))
                     OutlinedTextField(
@@ -573,7 +578,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 }
             }
 
-            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -602,7 +607,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 }
             }
 
-            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(stringResource(R.string.str_choose_your_colored_pieces), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                     Row(
@@ -629,7 +634,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 }
             }
             
-            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     val language by viewModel.language.collectAsState()
                     Text(if (language == MainViewModel.Language.ENGLISH) "Language:" else "Lugha:", fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
@@ -650,7 +655,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 }
             }
 
-            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(stringResource(R.string.str_theme), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -677,7 +682,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 }
             }
 
-            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     val hapticsEnabled by viewModel.hapticsEnabled.collectAsState()
                     Text(stringResource(R.string.str_haptic_feedback), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
@@ -698,7 +703,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 }
             }
 
-            Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+            OutlinedCard(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     val soundTheme by viewModel.soundTheme.collectAsState()
                     Text(stringResource(R.string.str_sound_theme), fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(bottom = 8.dp))
@@ -766,9 +771,10 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 
             // Wallet Display
             val wallet by viewModel.wallet.collectAsState()
-            Card(
+            OutlinedCard(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                border = BorderStroke(2.dp, MaterialTheme.colorScheme.tertiary)
             ) {
                 Row(
                     modifier = Modifier.padding(16.dp).fillMaxWidth(),
@@ -786,9 +792,10 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                 }
             }
             
-            Card(
+            OutlinedCard(
             modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.secondary)
         ) {
             Row(
                 modifier = Modifier.padding(16.dp).fillMaxWidth(),
@@ -807,13 +814,14 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
 
         Text(stringResource(R.string.str_choose_game_mode), fontWeight = FontWeight.ExtraBold, fontSize = 20.sp, modifier = Modifier.padding(bottom = 16.dp, top = 8.dp))
 
-        ElevatedCard(
+        OutlinedCard(
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             onClick = { viewModel.setGameMode(GameMode.VS_AI) },
-            colors = CardDefaults.elevatedCardColors(
+            colors = CardDefaults.outlinedCardColors(
                 containerColor = if (gameMode == GameMode.VS_AI) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
             ),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (gameMode == GameMode.VS_AI) 8.dp else 2.dp)
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+            elevation = CardDefaults.outlinedCardElevation(defaultElevation = if (gameMode == GameMode.VS_AI) 8.dp else 2.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -849,13 +857,14 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             }
         }
 
-        ElevatedCard(
+        OutlinedCard(
             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
             onClick = { viewModel.setGameMode(GameMode.WIFI) },
-            colors = CardDefaults.elevatedCardColors(
+            colors = CardDefaults.outlinedCardColors(
                 containerColor = if (gameMode == GameMode.WIFI) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
             ),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (gameMode == GameMode.WIFI) 8.dp else 2.dp)
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+            elevation = CardDefaults.outlinedCardElevation(defaultElevation = if (gameMode == GameMode.WIFI) 8.dp else 2.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -897,13 +906,14 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
             }
         }
 
-        ElevatedCard(
+        OutlinedCard(
             modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp),
             onClick = { viewModel.setGameMode(GameMode.ONLINE) },
-            colors = CardDefaults.elevatedCardColors(
+            colors = CardDefaults.outlinedCardColors(
                 containerColor = if (gameMode == GameMode.ONLINE) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
             ),
-            elevation = CardDefaults.elevatedCardElevation(defaultElevation = if (gameMode == GameMode.ONLINE) 8.dp else 2.dp)
+            border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+            elevation = CardDefaults.outlinedCardElevation(defaultElevation = if (gameMode == GameMode.ONLINE) 8.dp else 2.dp)
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -916,6 +926,12 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                     val onlineStatus by viewModel.onlineMatchManager.connectionStatus.collectAsState()
                     val roomState by viewModel.onlineMatchManager.roomState.collectAsState()
                     val scope = rememberCoroutineScope()
+                    
+                    LaunchedEffect(roomState?.status) {
+                        if (roomState?.status == "PLAYING") {
+                            viewModel.startGame()
+                        }
+                    }
                     
                     Column(modifier = Modifier.padding(top = 16.dp)) {
                         Text("Status: $onlineStatus", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(bottom = 8.dp))
@@ -937,8 +953,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Button(onClick = { 
                                     scope.launch {
-                                        viewModel.onlineMatchManager.createRoom()
-                                        viewModel.startGame()
+                                        viewModel.onlineMatchManager.createRoom(userName)
                                     }
                                 }) {
                                     Text(stringResource(R.string.str_create_room))
@@ -953,7 +968,7 @@ fun MenuScreen(modifier: Modifier = Modifier, viewModel: MainViewModel) {
                             )
                             Button(onClick = { 
                                 scope.launch {
-                                    val success = viewModel.onlineMatchManager.joinRoom(joinCode)
+                                    val success = viewModel.onlineMatchManager.joinRoom(joinCode, userName)
                                     if (success) {
                                         viewModel.startGame()
                                     }
@@ -1006,7 +1021,12 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
 
     val p1Name = userName
     // For ONLINE mode, we could technically get the guest name, but usually it's fast. Let's just use "Mpinzani" or keep it generic
-    val p2Name = if (gameMode == GameMode.VS_AI) "Kompyuta" else if (gameMode == GameMode.WIFI) (opponentName ?: "Mpinzani") else "Mpinzani"
+    val p2Name = if (gameMode == GameMode.VS_AI) "Kompyuta" else if (gameMode == GameMode.WIFI) (opponentName ?: "Mpinzani") else {
+        val rs = viewModel.onlineMatchManager.roomState.value
+        val isMimiHost = rs?.hostId == viewModel.onlineMatchManager.myPlayerId
+        val opName = if (isMimiHost) rs?.guestName else rs?.hostName
+        if (!opName.isNullOrEmpty()) opName else "Mpinzani"
+    }
 
     val myPlayerSide = if (gameMode == GameMode.WIFI && netRole == NetworkRole.CLIENT) Player.RED else if (gameMode == GameMode.ONLINE && viewModel.onlineMatchManager.roomState.value?.guestId == viewModel.onlineMatchManager.myPlayerId) Player.RED else Player.WHITE
 
@@ -1151,7 +1171,7 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
         } else if (isMimi) {
             "Zamu yako ($turnName)"
         } else {
-            "Zamu ya: $turnName"
+            "Zamu ya $turnName"
         }
 
         Text(
@@ -1169,7 +1189,7 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        val shouldRotate = gameMode == GameMode.WIFI && netRole == NetworkRole.CLIENT
+        val shouldRotate = myPlayerSide == Player.RED
         val boardRotation = if (shouldRotate) 180f else 0f
 
         // Board
@@ -1181,13 +1201,13 @@ fun GameScreen(modifier: Modifier = Modifier, viewModel: MainViewModel = viewMod
                 .shadow(16.dp, RoundedCornerShape(12.dp))
                 .background(
                     brush = Brush.linearGradient(
-                        colors = listOf(Color(0xFF8B5A2B), Color(0xFF5C3317)),
+                        colors = listOf(PaletteNavy, PaletteNavy.copy(alpha = 0.8f)),
                         start = Offset(0f, 0f),
                         end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY)
                     ),
                     shape = RoundedCornerShape(12.dp)
                 )
-                .border(2.dp, Color(0xFF3E1F0B), RoundedCornerShape(12.dp))
+                .border(2.dp, PaletteLightBlue, RoundedCornerShape(12.dp))
                 .padding(12.dp) // The wooden rim
                 .clip(RoundedCornerShape(4.dp))
                 .background(BoardLight)

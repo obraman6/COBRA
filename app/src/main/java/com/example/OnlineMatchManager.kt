@@ -13,6 +13,8 @@ data class RoomState(
     val roomId: String = "",
     val hostId: String = "",
     val guestId: String = "",
+    val hostName: String = "",
+    val guestName: String = "",
     val status: String = "WAITING", // WAITING, PLAYING, FINISHED
     val lastMove: String = "",
     val turn: Player = Player.WHITE,
@@ -32,29 +34,44 @@ class OnlineMatchManager {
     private var currentRoomListener: ValueEventListener? = null
     var myPlayerId: String = "player_${System.currentTimeMillis()}"
 
-    suspend fun createRoom(): String {
-        val uniqueId = (100000..999999).random().toString()
+    suspend fun createRoom(playerName: String): String {
+        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+        val uniqueId = (1..6).map { chars.random() }.joinToString("")
         val room = RoomState(
             roomId = uniqueId,
-            hostId = myPlayerId
+            hostId = myPlayerId,
+            hostName = playerName
         )
         db.child("rooms").child(uniqueId).setValue(room).await()
+        db.child("rooms").child(uniqueId).onDisconnect().removeValue()
         listenToRoom(uniqueId)
         return uniqueId
     }
 
-    suspend fun joinRoom(roomId: String): Boolean {
-        val snapshot = db.child("rooms").child(roomId).get().await()
+    suspend fun joinRoom(roomId: String, playerName: String): Boolean {
+        val upperRoomId = roomId.uppercase()
+        val snapshot = db.child("rooms").child(upperRoomId).get().await()
         if (snapshot.exists()) {
             val room = snapshot.getValue(RoomState::class.java)
             if (room?.status == "WAITING" && room.guestId.isEmpty()) {
-                db.child("rooms").child(roomId).child("guestId").setValue(myPlayerId).await()
-                db.child("rooms").child(roomId).child("status").setValue("PLAYING").await()
-                listenToRoom(roomId)
+                db.child("rooms").child(upperRoomId).child("guestId").setValue(myPlayerId).await()
+                db.child("rooms").child(upperRoomId).child("guestName").setValue(playerName).await()
+                db.child("rooms").child(upperRoomId).child("status").setValue("PLAYING").await()
+                db.child("rooms").child(upperRoomId).child("status").onDisconnect().setValue("FINISHED")
+                listenToRoom(upperRoomId)
                 return true
             }
         }
         return false
+    }
+
+    suspend fun deleteRoom(roomId: String) {
+        try {
+            db.child("rooms").child(roomId).onDisconnect().cancel()
+            db.child("rooms").child(roomId).removeValue().await()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun listenToRoom(roomId: String) {
@@ -68,6 +85,7 @@ class OnlineMatchManager {
                     _roomState.value = state
                     _connectionStatus.value = if (state.status == "PLAYING") "Imeunganishwa (Connected)" else "Inasubiri... (Waiting)"
                 } else {
+                    _roomState.value = null
                     _connectionStatus.value = "Chumba Kimefungwa (Room Closed)"
                 }
             }
@@ -81,7 +99,7 @@ class OnlineMatchManager {
     suspend fun sendMove(roomId: String, moveStr: String, nextTurn: Player) {
         val updates = mapOf(
             "lastMove" to moveStr,
-            "turn" to nextTurn
+            "turn" to nextTurn.name
         )
         db.child("rooms").child(roomId).updateChildren(updates).await()
     }

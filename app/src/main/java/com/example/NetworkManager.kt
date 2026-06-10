@@ -40,9 +40,14 @@ object NetworkManager {
     val role: StateFlow<NetworkRole> = _role.asStateFlow()
 
     private var moveCallback: ((Move) -> Unit)? = null
+    private var resignCallback: (() -> Unit)? = null
 
     fun setMoveCallback(callback: (Move) -> Unit) {
         moveCallback = callback
+    }
+
+    fun setResignCallback(callback: () -> Unit) {
+        resignCallback = callback
     }
 
     fun startHost(myName: String, port: Int = 8080) {
@@ -131,6 +136,10 @@ object NetworkManager {
                                 moveCallback?.invoke(Move(Pos(fromX, fromY), Pos(toX, toY), captured))
                             }
                         }
+                    } else if (message == "RESIGN") {
+                        withContext(Dispatchers.Main) {
+                            resignCallback?.invoke()
+                        }
                     } else if (message == "RESTART") {
                         // Restart game requested
                     }
@@ -143,6 +152,12 @@ object NetworkManager {
             _isConnected.value = false
             _connectionStatus.value = "Muunganisho umekatika."
             disconnect()
+        }
+    }
+
+    fun sendResign() {
+        CoroutineScope(Dispatchers.IO).launch {
+            out?.println("RESIGN")
         }
     }
 
